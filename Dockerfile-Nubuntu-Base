@@ -1,0 +1,18 @@
+FROM ubuntu:16.04
+LABEL Isaac A. White <iwhite@nagios.com>
+
+RUN apt-get update && apt-get install -y sudo
+RUN sudo apt-get update && sudo apt-get install -y autoconf gcc libc6 make wget unzip apache2 php libapache2-mod-php7.0 libgd2-xpm-dev vim ufw
+
+RUN sudo dpkg -l selinux*
+RUN sudo mkdir -p /var/www/html
+COPY . /var/www/html/
+WORKDIR /var/www/html/
+RUN cd /var/www/html/
+RUN wget -O nagioscore.tar.gz https://github.com/NagiosEnterprises/nagioscore/archive/nagios-4.4.5.tar.gz
+RUN tar xzf nagioscore.tar.gz
+RUN ls -alt
+RUN cp -r /var/www/html/nagioscore-nagios-4.4.5/* .
+RUN rm -rf /var/www/html/nagioscore-nagios-4.4.5
+RUN sudo ./configure --with-httpd-conf=/etc/apache2/sites-enabled
+RUN sudo make all

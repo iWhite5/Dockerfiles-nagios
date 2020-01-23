@@ -1,0 +1,49 @@
+FROM paigeeworld/centos7
+MAINTAINER Isaac White
+
+RUN yum install -y gcc zlib-devel perl-ExtUtils-MakeMaker gettext curl-devel wget make dos2unix unzip vim
+
+WORKDIR /tmp
+RUN wget  https://www.kernel.org/pub/software/scm/git/git-2.25.0.tar.gz
+RUN tar xf git-2.25.0.tar.gz
+WORKDIR /tmp/git-2.25.0
+RUN pwd
+RUN ./configure
+RUN make && make install
+RUN ln -s /usr/local/bin/git /usr/bin/git
+
+RUN mkdir -p /var/www/html
+#COPY . /var/www/html
+WORKDIR /var/www/html
+RUN cd /var/www/html
+#RUN dos2unix -f *
+RUN wget -O nagioscore.tar.gz https://github.com/NagiosEnterprises/nagioscore/archive/nagios-4.4.5.tar.gz
+RUN tar xzf nagioscore.tar.gz
+RUN ls -alt
+RUN cd /var/www/html/nagioscore-nagios-4.4.5
+WORKDIR /var/www/html/nagioscore-nagios-4.4.5
+RUN ./configure
+RUN make all
+
+RUN make install-groups-users
+RUN usermod -a -G nagios apache
+
+RUN make install
+RUN make install-daemoninit
+RUN systemctl enable httpd.service
+RUN make install-commandmode
+RUN make install-config
+RUN make install-webconf
+
+#RUN firewall-cmd --zone=public --add-port=80/tcp
+#RUN firewall-cmd --zone=public --add-port=80/tcp --permanent
+RUN htpasswd -c /usr/local/nagios/etc/htpasswd.users nagiosadmin
+
+#RUN systemctl start httpd.service
+#RUN systemctl start nagios.service
+
+# Shortcut to get to base directory of application
+RUN echo "alias d='cd /var/www/html'" >> ~/.bashrc
+
+# Open up valid ports to listen to outside of the container
+EXPOSE 80 443 3306 3307 8000 8001 8002

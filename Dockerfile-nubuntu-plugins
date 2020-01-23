@@ -1,0 +1,27 @@
+FROM iwhite5/nubuntu-core-engine
+LABEL Isaac A. White <iwhite@nagios.com>
+
+RUN sudo apt-get update && \
+    sudo apt-get install -y libmcrypt-dev \
+    libssl-dev \
+    bc \
+    gawk \
+    dc \
+    build-essential \
+    snmp \
+    libnet-snmp-perl \
+    gettext \
+    supervisor
+
+RUN sudo mkdir -p /var/www/
+WORKDIR /var/www/
+RUN git clone https://github.com/nagios-plugins/nagios-plugins.git plugins
+RUN cd /var/www/plugins/
+WORKDIR /var/www/plugins/
+RUN sudo ./tools/setup
+RUN sudo ./configure
+RUN sudo make
+RUN sudo make all
+
+# Must be last line. This starts a persistent process that
+CMD /usr/bin/supervisord -c /var/www/html/supervisord.conf

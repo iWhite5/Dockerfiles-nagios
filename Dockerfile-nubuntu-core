@@ -21,4 +21,3 @@ RUN service apache2 restart
 # Open up valid ports to listen to outside of the container
 EXPOSE 80 443 3306 3307 8000 8001 8002
 
-RUN apache2ctl start

@@ -1,0 +1,61 @@
+FROM iwhite5/nubuntu-base
+LABEL Isaac A. White <iwhite@nagios.com>
+
+# Nagios Core via Github repo
+COPY . /var/www/html/
+WORKDIR /var/www/html/
+RUN sudo ./configure --with-httpd-conf=/etc/apache2/sites-enabled
+RUN sudo make all
+
+# Setup the user and add it to the group.
+RUN sudo make install-groups-users
+RUN sudo usermod -a -G nagios www-data
+
+#
+RUN sudo make install
+RUN sudo make install-daemoninit
+RUN sudo make install-commandmode
+RUN sudo make install-config
+RUN sudo make install-webconf
+RUN sudo a2enmod rewrite
+RUN sudo a2enmod cgi
+CMD service apache2 restart
+
+# Firewall (ufw)
+## By default the firewall is disabled (ufw disable). Uncomment these lines and rebuild to get a working firewall.
+CMD service ufw start
+## These commands must be run manually using a Bash shell (/bin/bash) within Docker as 'bin/sh' is hardcoded for builds.
+CMD /bin/bash ufw enable
+CMD /bin/bash ufw allow Apache
+CMD /bin/bash ufw reload
+
+# Set the default password. Change the final argument to the password of choice.
+RUN sudo htpasswd -bc /usr/local/nagios/etc/htpasswd.users nagiosadmin admin
+
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Plugins
+WORKDIR /var/www/
+RUN git clone https://github.com/nagios-plugins/nagios-plugins.git plugins
+WORKDIR /var/www/plugins/
+RUN sudo ./tools/setup
+RUN sudo ./configure
+RUN sudo make
+RUN sudo make all
+
+# Open up valid ports to listen to outside of the container
+EXPOSE 80 443 3306 3307 5666 5693 8000 8001 8002
+RUN echo "alias d='cd /var/www/html'" >> /root/.bash_profile
+
+# TODO: This will need to be a part of Volumes.
+# TODO: Final step does not work without erroring out.
+# Sample install NCPA
+#RUN touch /etc/apt/sources.list.d/nagios.list
+#RUN echo "deb https://repo.nagios.com/deb/xenial /" >> /etc/apt/sources.list.d/nagios.list
+#RUN wget -qO - https://repo.nagios.com/GPG-KEY-NAGIOS-V2 | apt-key add -
+#RUN apt-get install apt-transport-https
+#RUN apt-get update && apt-get install ncpa #TODO: fix final step ('apt-get install ncpa' errors out)
+
+WORKDIR /var/www/html
+# Must be last line. This starts a persistent process that runs the container without the need for a separate window.
+CMD /usr/bin/supervisord -c /var/www/html/supervisord.conf
